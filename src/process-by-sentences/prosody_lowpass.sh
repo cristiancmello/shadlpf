@@ -26,8 +26,8 @@
 #   ./prosody_lowpass.sh [--input DIR] [--output DIR] [--sr N] [--mono]
 #
 # Flags opcionais:
-#   --input  DIR  Pasta de entrada (padrão: ./clips)
-#   --output DIR  Pasta de saída   (padrão: ./clips/prosody)
+#   --input  DIR  Pasta de entrada (padrão: ./generated/clips)
+#   --output DIR  Pasta de saída   (padrão: ./generated/clips/prosody)
 #   --sr N        Sample rate de saída em Hz (padrão: 16000)
 #   --rolloff N   Rolloff em dB/oitava: 12, 24 ou 36 (padrão: 36)
 #   --mono        Gera versão monotonizada (condição controle — requer Praat)
@@ -36,8 +36,8 @@
 set -euo pipefail
 
 # ---------- defaults ---------------------------------------------------------
-INPUT_DIR="./clips"
-OUTPUT_DIR="./clips/prosody"
+INPUT_DIR="./generated/clips"
+OUTPUT_DIR="./generated/clips/prosody"
 SAMPLE_RATE=16000
 DO_MONO=0
 

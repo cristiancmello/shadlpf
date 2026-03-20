@@ -50,7 +50,7 @@ DEST_TXT_AUDIO="${FILENAME_ORIGINAL_AUDIO}.txt"
 
 # Pasta raiz que agrupa todo o material gerado para este áudio.
 # Estrutura final:
-#   clips-<nome>/
+#   generated/clips-<nome>/
 #     ├── <nome>.srt
 #     ├── <nome>.txt
 #     ├── clips/
@@ -65,9 +65,11 @@ DEST_TXT_AUDIO="${FILENAME_ORIGINAL_AUDIO}.txt"
 #           ├── lp_*.flac
 #           ├── pratica_*.m3u
 #           └── pratica_COMPLETA.m3u
-ROOT_DIR="clips-${FILENAME_ORIGINAL_AUDIO}"
+ROOT_DIR="generated/clips-${FILENAME_ORIGINAL_AUDIO}"
 INPUT_DIR="${ROOT_DIR}/clips"
 PROSODY_DIR="${ROOT_DIR}/prosody"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source whisper-env/bin/activate
 
@@ -89,12 +91,12 @@ mkdir -p "$ROOT_DIR"
 mv "$DEST_SRT_AUDIO" "$ROOT_DIR/"
 mv "$DEST_TXT_AUDIO" "$ROOT_DIR/"
 
-python split_audio.py "$SOURCE_ORIGINAL_AUDIO_FLAC" \
+python "$SCRIPT_DIR/split_audio.py" "$SOURCE_ORIGINAL_AUDIO_FLAC" \
   "$ROOT_DIR/$DEST_SRT_AUDIO" \
   "$INPUT_DIR" \
   --pad-start "$PAD_START" --pad-end "$PAD_END"
 
-./prosody_lowpass.sh --input "$INPUT_DIR" --output "$PROSODY_DIR"
+"$SCRIPT_DIR/prosody_lowpass.sh" --input "$INPUT_DIR" --output "$PROSODY_DIR"
 
 echo ""
 echo "=============================================="

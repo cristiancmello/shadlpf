@@ -124,7 +124,7 @@ check_deps
 # Paths de saída
 # -----------------------------------------------------------------------------
 BASENAME="$(basename "${INPUT%.*}")"
-OUTDIR="./shad.${BASENAME}"
+OUTDIR="./generated/shad.${BASENAME}"
 mkdir -p "$OUTDIR"
 
 LPF_SLOW="$OUTDIR/01_lpf_${LPF_HZ}hz_lento.flac"
@@ -132,6 +132,7 @@ LPF_NORM="$OUTDIR/02_lpf_${LPF_HZ}hz_normal.flac"
 STUDY_FLAC="$OUTDIR/03_original_estudo.flac"
 ORIGINAL_FLAC="$OUTDIR/04_original_puro.flac"
 TRANSCRIPT_TXT="$OUTDIR/05_transcricao.txt"
+INSTRUCTIONS_TXT="$OUTDIR/00_roteiro_shadowing.txt"
 
 FF="ffmpeg -loglevel error -y"
 
@@ -337,8 +338,6 @@ echo ""
 # -----------------------------------------------------------------------------
 # ROTEIRO — Gerar arquivo de instruções em texto
 # -----------------------------------------------------------------------------
-INSTRUCTIONS_TXT="$OUTDIR/00_roteiro_shadowing.txt"
-
 cat > "$INSTRUCTIONS_TXT" << 'EOF'
 ══════════════════════════════════════════════════════════
  ROTEIRO DE PRÉ-SHADOWING
