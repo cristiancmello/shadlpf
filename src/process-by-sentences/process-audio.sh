@@ -1,36 +1,58 @@
 #!/bin/bash
-
-# Uso: ./process-audio.sh [--lang CODIGO]
+# =============================================================================
+# Uso: ./process-audio.sh <audio.flac> [--lang CODIGO] [--pad-start MS] [--pad-end MS]
+#
 # Exemplos:
-#   ./process-audio.sh              (padrão: en)
-#   ./process-audio.sh --lang pt
-#   ./process-audio.sh --lang es
+#   ./process-audio.sh podcast.flac
+#   ./process-audio.sh podcast.flac --lang pt
+#   ./process-audio.sh podcast.flac --lang es --pad-start 200 --pad-end 200
+# =============================================================================
 
-FILENAME_ORIGINAL_AUDIO="p001"
-WHISPERX_LANG="en"   # idioma padrão
+# ---------- argumento posicional: arquivo de áudio ---------------------------
+if [[ $# -lt 1 || "$1" == -* ]]; then
+  echo "Uso: $0 <audio.flac> [--lang CODIGO] [--pad-start MS] [--pad-end MS]"
+  echo "  --lang       Código de idioma para o WhisperX (padrão: en)"
+  echo "               Exemplos: en, pt, es, fr, de, ja, zh"
+  echo "  --pad-start  Padding antes de cada segmento em ms (padrão: 150)"
+  echo "  --pad-end    Padding após cada segmento em ms     (padrão: 150)"
+  exit 0
+fi
 
-# ---------- parse args -------------------------------------------------------
+SOURCE_ORIGINAL_AUDIO_FLAC="$1"
+shift
+
+[[ -f "$SOURCE_ORIGINAL_AUDIO_FLAC" ]] \
+  || { echo "Erro: arquivo não encontrado: $SOURCE_ORIGINAL_AUDIO_FLAC"; exit 1; }
+
+# ---------- defaults ---------------------------------------------------------
+WHISPERX_LANG="en"
+PAD_START=150
+PAD_END=150
+
+# ---------- parse args restantes ---------------------------------------------
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --lang) WHISPERX_LANG="$2"; shift 2 ;;
+    --lang)      WHISPERX_LANG="$2"; shift 2 ;;
+    --pad-start) PAD_START="$2";     shift 2 ;;
+    --pad-end)   PAD_END="$2";       shift 2 ;;
     -h|--help)
-      echo "Uso: $0 [--lang CODIGO]"
-      echo "  --lang  Código de idioma para o WhisperX (padrão: en)"
-      echo "          Exemplos: en, pt, es, fr, de, ja, zh"
+      echo "Uso: $0 <audio.flac> [--lang CODIGO] [--pad-start MS] [--pad-end MS]"
       exit 0 ;;
     *) echo "Opção desconhecida: $1"; exit 1 ;;
   esac
 done
 
-SOURCE_ORIGINAL_AUDIO_FLAC="${FILENAME_ORIGINAL_AUDIO}.flac"
+# ---------- deriva nomes a partir do arquivo de entrada ----------------------
+FILENAME_ORIGINAL_AUDIO="$(basename "${SOURCE_ORIGINAL_AUDIO_FLAC%.*}")"
+
 DEST_SRT_AUDIO="${FILENAME_ORIGINAL_AUDIO}.srt"
 DEST_TXT_AUDIO="${FILENAME_ORIGINAL_AUDIO}.txt"
 
 # Pasta raiz que agrupa todo o material gerado para este áudio.
 # Estrutura final:
-#   clips-0-48/
-#     ├── 0-48.srt
-#     ├── 0-48.txt
+#   clips-<nome>/
+#     ├── <nome>.srt
+#     ├── <nome>.txt
 #     ├── clips/
 #     │   ├── 001_Hello_how_are_you.flac
 #     │   ├── 001_Hello_how_are_you.txt
@@ -52,7 +74,7 @@ source whisper-env/bin/activate
 pip install librosa numpy pillow --break-system-packages
 
 echo "Idioma selecionado: $WHISPERX_LANG"
-whisperx $SOURCE_ORIGINAL_AUDIO_FLAC --model large-v2 --language "$WHISPERX_LANG" --output_format srt
+whisperx "$SOURCE_ORIGINAL_AUDIO_FLAC" --model large-v2 --language "$WHISPERX_LANG" --output_format srt
 
 # Extrai o texto reconhecido do SRT e salva como .txt
 echo "Exportando texto reconhecido para $DEST_TXT_AUDIO..."
@@ -67,10 +89,10 @@ mkdir -p "$ROOT_DIR"
 mv "$DEST_SRT_AUDIO" "$ROOT_DIR/"
 mv "$DEST_TXT_AUDIO" "$ROOT_DIR/"
 
-python split_audio.py $SOURCE_ORIGINAL_AUDIO_FLAC \
+python split_audio.py "$SOURCE_ORIGINAL_AUDIO_FLAC" \
   "$ROOT_DIR/$DEST_SRT_AUDIO" \
   "$INPUT_DIR" \
-  --pad-start 150 --pad-end 150
+  --pad-start "$PAD_START" --pad-end "$PAD_END"
 
 ./prosody_lowpass.sh --input "$INPUT_DIR" --output "$PROSODY_DIR"
 

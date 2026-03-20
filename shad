@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# =============================================================================
+# shad — Dispatcher de materiais de estudo ESL
+#
+# Uso:
+#   ./shad t <audio.flac> [lpf_hz] [lpf_db] [compressor_db] [modelo_whisper]
+#   ./shad s <audio.flac> [--lang CODIGO] [--pad-start MS] [--pad-end MS]
+#
+# Modos:
+#   t   Abordagem por texto completo  (src/process-by-texts/shad.sh)
+#   s   Abordagem por sentenças       (src/process-by-sentences/process-audio.sh)
+#
+# Exemplos:
+#   ./shad t podcast.flac 300 36 -18 large-v2
+#   ./shad s podcast.flac --lang en
+#   ./shad s podcast.flac --lang pt --pad-start 200 --pad-end 200
+# =============================================================================
+
+set -euo pipefail
+
+# ---------- cores ------------------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# ---------- localização dos módulos ------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEXT_SCRIPT="${SCRIPT_DIR}/src/process-by-texts/shad.sh"
+SENTENCE_SCRIPT="${SCRIPT_DIR}/src/process-by-sentences/process-audio.sh"
+
+# ---------- helpers ----------------------------------------------------------
+usage() {
+  cat <<EOF
+
+${BOLD}shad${RESET} — Gerador de materiais de estudo ESL com Low Pass Filter + WhisperX
+
+${BOLD}USO${RESET}
+  $(basename "$0") <modo> <audio.flac> [opções]
+
+${BOLD}MODOS${RESET}
+  ${CYAN}t${RESET}   Texto completo — processa o áudio inteiro como um bloco
+  ${CYAN}s${RESET}   Sentenças      — segmenta o áudio por frase via WhisperX SRT
+
+${BOLD}OPÇÕES — modo t (texto)${RESET}
+  <audio.flac>          Arquivo de entrada
+  [lpf_hz]              Frequência de corte do LPF em Hz        (padrão: 300)
+  [lpf_db]              Rolloff do LPF em dB/oitava (12/24/36)  (padrão: 36)
+  [compressor_db]       Threshold do compressor em dB           (padrão: -18)
+  [modelo_whisper]      Modelo WhisperX: tiny/base/small/large-v2 (padrão: base)
+
+${BOLD}OPÇÕES — modo s (sentenças)${RESET}
+  <audio.flac>          Arquivo de entrada
+  --lang CODIGO         Idioma para o WhisperX: en, pt, es, fr… (padrão: en)
+  --pad-start MS        Padding antes de cada segmento em ms    (padrão: 150)
+  --pad-end MS          Padding após cada segmento em ms        (padrão: 150)
+
+${BOLD}EXEMPLOS${RESET}
+  $(basename "$0") t podcast.flac
+  $(basename "$0") t podcast.flac 300 36 -18 large-v2
+  $(basename "$0") s podcast.flac --lang en
+  $(basename "$0") s podcast.flac --lang pt --pad-start 200 --pad-end 200
+
+EOF
+  exit "${1:-0}"
+}
+
+die() {
+  echo -e "${RED}[✗]${RESET} $1" >&2
+  exit 1
+}
+
+check_script() {
+  local path="$1"
+  [[ -f "$path" ]] || die "Módulo não encontrado: $path\n    Certifique-se de que a estrutura src/ está ao lado deste script."
+  [[ -x "$path" ]] || chmod +x "$path"
+}
+
+# ---------- sem argumentos ---------------------------------------------------
+[[ $# -lt 1 ]] && usage 0
+
+MODE="$1"
+shift
+
+# ---------- despacho ---------------------------------------------------------
+case "$MODE" in
+
+  # ── MODO TEXTO ──────────────────────────────────────────────────────────────
+  t|text)
+    [[ $# -lt 1 ]] && { echo -e "${YELLOW}[!]${RESET} Informe o arquivo de áudio."; usage 1; }
+
+    AUDIO="$1"; shift
+    [[ -f "$AUDIO" ]] || die "Arquivo não encontrado: $AUDIO"
+
+    check_script "$TEXT_SCRIPT"
+
+    echo -e "\n${BOLD}── Modo: Texto completo ──${RESET}"
+    echo -e "${CYAN}[•]${RESET} Áudio  : $AUDIO"
+    echo -e "${CYAN}[•]${RESET} Script : $TEXT_SCRIPT"
+    [[ $# -gt 0 ]] && echo -e "${CYAN}[•]${RESET} Extras : $*"
+    echo ""
+
+    # shad.sh espera o áudio como $1 seguido de argumentos posicionais opcionais
+    exec "$TEXT_SCRIPT" "$AUDIO" "$@"
+    ;;
+
+  # ── MODO SENTENÇAS ──────────────────────────────────────────────────────────
+  s|sentence|sentences)
+    [[ $# -lt 1 ]] && { echo -e "${YELLOW}[!]${RESET} Informe o arquivo de áudio."; usage 1; }
+
+    AUDIO="$1"; shift
+    [[ -f "$AUDIO" ]] || die "Arquivo não encontrado: $AUDIO"
+
+    check_script "$SENTENCE_SCRIPT"
+    echo -e "\n${BOLD}── Modo: Sentenças ──${RESET}"
+    echo -e "${CYAN}[•]${RESET} Áudio  : $AUDIO"
+    echo -e "${CYAN}[•]${RESET} Script : $SENTENCE_SCRIPT"
+    [[ $# -gt 0 ]] && echo -e "${CYAN}[•]${RESET} Extras : $*"
+    echo ""
+
+    exec "$SENTENCE_SCRIPT" "$AUDIO" "$@"
+    ;;
+
+  # ── AJUDA ───────────────────────────────────────────────────────────────────
+  -h|--help|help)
+    usage 0
+    ;;
+
+  *)
+    echo -e "${RED}[✗]${RESET} Modo desconhecido: '$MODE'  (use 't' ou 's')" >&2
+    usage 1
+    ;;
+esac
